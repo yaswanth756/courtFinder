@@ -3,6 +3,7 @@ package com.example.myapplication.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.AuthRepository
+import com.example.myapplication.data.BookingConfirmation
 import com.example.myapplication.data.Court
 import com.example.myapplication.data.MockCourtFinderApi
 import com.example.myapplication.data.User
@@ -38,7 +39,12 @@ data class AuthUiState(
     // Home/Search AI state
     val searchAiQuery: String = "Find Tennis courts available near me at 6 PM",
     val searchResults: List<Court> = emptyList(),
-    val isSearchingCourts: Boolean = false
+    val isSearchingCourts: Boolean = false,
+    // Interactive Booking & Favorites Feature
+    val selectedCourtForBooking: Court? = null,
+    val selectedTimeSlot: String? = null,
+    val isBookingInProgress: Boolean = false,
+    val bookingSuccessConfirmation: BookingConfirmation? = null
 )
 
 class AuthViewModel(
@@ -91,7 +97,6 @@ class AuthViewModel(
 
         viewModelScope.launch {
             if (state.authMode == AuthMode.Login) {
-                // Perform Login API call
                 val result = repository.login(state.emailOrPhoneInput, state.passwordInput)
                 if (result.isSuccess) {
                     val user = result.getOrNull()
@@ -108,7 +113,6 @@ class AuthViewModel(
                     )
                 }
             } else {
-                // Perform Registration API call
                 val result = repository.register(
                     fullName = state.fullNameInput,
                     email = state.emailOrPhoneInput,
@@ -184,6 +188,58 @@ class AuthViewModel(
                 searchResults = result.getOrDefault(emptyList())
             )
         }
+    }
+
+    // Toggle court as favorite
+    fun toggleFavorite(courtId: String) {
+        val updatedList = _uiState.value.searchResults.map { court ->
+            if (court.id == courtId) {
+                court.copy(isFavorite = !court.isFavorite)
+            } else {
+                court
+            }
+        }
+        _uiState.value = _uiState.value.copy(searchResults = updatedList)
+    }
+
+    // Open booking dialog
+    fun openBookingDialog(court: Court) {
+        _uiState.value = _uiState.value.copy(
+            selectedCourtForBooking = court,
+            selectedTimeSlot = court.availableTimeSlots.firstOrNull()
+        )
+    }
+
+    fun selectTimeSlot(timeSlot: String) {
+        _uiState.value = _uiState.value.copy(selectedTimeSlot = timeSlot)
+    }
+
+    fun dismissBookingDialog() {
+        _uiState.value = _uiState.value.copy(
+            selectedCourtForBooking = null,
+            selectedTimeSlot = null
+        )
+    }
+
+    fun confirmBooking() {
+        val court = _uiState.value.selectedCourtForBooking ?: return
+        val slot = _uiState.value.selectedTimeSlot ?: return
+
+        _uiState.value = _uiState.value.copy(isBookingInProgress = true)
+        viewModelScope.launch {
+            val result = api.bookCourt(court.id, slot)
+            if (result.isSuccess) {
+                _uiState.value = _uiState.value.copy(
+                    isBookingInProgress = false,
+                    selectedCourtForBooking = null,
+                    bookingSuccessConfirmation = result.getOrNull()
+                )
+            }
+        }
+    }
+
+    fun dismissBookingConfirmation() {
+        _uiState.value = _uiState.value.copy(bookingSuccessConfirmation = null)
     }
 
     private fun loadInitialCourts() {

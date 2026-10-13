@@ -11,8 +11,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import com.example.myapplication.ui.auth.AppScreen
 import com.example.myapplication.ui.auth.AuthViewModel
 import com.example.myapplication.ui.auth.LoginScreen
@@ -79,8 +79,18 @@ fun CourtFinderApp(
                     searchQuery = state.searchAiQuery,
                     searchResults = state.searchResults,
                     isSearching = state.isSearchingCourts,
+                    selectedCourtForBooking = state.selectedCourtForBooking,
+                    selectedTimeSlot = state.selectedTimeSlot,
+                    isBookingInProgress = state.isBookingInProgress,
+                    bookingSuccessConfirmation = state.bookingSuccessConfirmation,
                     onSearchQueryChanged = viewModel::onSearchQueryChanged,
                     onPerformSearch = viewModel::searchCourtsWithAI,
+                    onToggleFavorite = viewModel::toggleFavorite,
+                    onOpenBookingDialog = viewModel::openBookingDialog,
+                    onSelectTimeSlot = viewModel::selectTimeSlot,
+                    onConfirmBooking = viewModel::confirmBooking,
+                    onDismissBookingDialog = viewModel::dismissBookingDialog,
+                    onDismissBookingConfirmation = viewModel::dismissBookingConfirmation,
                     onLogout = viewModel::logout
                 )
             }

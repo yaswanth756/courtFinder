@@ -1,7 +1,7 @@
 package com.example.myapplication.data
 
 /**
- * Data Models for CourtFinder Authentication and Court Search.
+ * Data Models for CourtFinder Authentication, Court Search, and Booking.
  */
 
 data class LoginRequest(
@@ -39,5 +39,14 @@ data class Court(
     val pricePerHour: String,
     val rating: Double,
     val availableTimeSlots: List<String>,
-    val aiMatchScore: Int // e.g. 95% AI Match
+    val aiMatchScore: Int, // e.g. 95% AI Match
+    val isFavorite: Boolean = false,
+    val amenities: List<String> = listOf("💡 Floodlights", "🚗 Free Parking", "🚿 Showers", "💧 Water Station")
+)
+
+data class BookingConfirmation(
+    val bookingId: String,
+    val courtName: String,
+    val timeSlot: String,
+    val date: String
 )

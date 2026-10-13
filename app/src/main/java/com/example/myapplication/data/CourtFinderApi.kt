@@ -13,6 +13,7 @@ interface CourtFinderApi {
     suspend fun register(request: RegisterRequest): Result<AuthResponse>
     suspend fun loginWithGoogle(idToken: String): Result<AuthResponse>
     suspend fun searchCourtsWithAI(query: String): Result<List<Court>>
+    suspend fun bookCourt(courtId: String, timeSlot: String): Result<BookingConfirmation>
 }
 
 /**
@@ -21,7 +22,6 @@ interface CourtFinderApi {
 class MockCourtFinderApi : CourtFinderApi {
 
     override suspend fun login(request: LoginRequest): Result<AuthResponse> {
-        // Simulating network delay for backend auth API
         delay(1200)
 
         return if (request.emailOrPhone.contains("@") || request.emailOrPhone.length >= 10) {
@@ -46,7 +46,6 @@ class MockCourtFinderApi : CourtFinderApi {
     }
 
     override suspend fun register(request: RegisterRequest): Result<AuthResponse> {
-        // Simulating network delay for registration API
         delay(1500)
 
         if (request.fullName.isBlank()) {
@@ -88,7 +87,7 @@ class MockCourtFinderApi : CourtFinderApi {
     }
 
     override suspend fun searchCourtsWithAI(query: String): Result<List<Court>> {
-        delay(1000)
+        delay(800)
         val sampleCourts = listOf(
             Court(
                 id = "c1",
@@ -99,7 +98,9 @@ class MockCourtFinderApi : CourtFinderApi {
                 pricePerHour = "$25/hr",
                 rating = 4.9,
                 availableTimeSlots = listOf("06:00 PM", "07:00 PM", "09:00 PM"),
-                aiMatchScore = 98
+                aiMatchScore = 98,
+                isFavorite = true,
+                amenities = listOf("💡 LED Floodlights", "🚗 Free Parking", "🚿 Changing Rooms", "🎾 Racket Rental")
             ),
             Court(
                 id = "c2",
@@ -110,7 +111,9 @@ class MockCourtFinderApi : CourtFinderApi {
                 pricePerHour = "$18/hr",
                 rating = 4.7,
                 availableTimeSlots = listOf("05:30 PM", "08:00 PM"),
-                aiMatchScore = 94
+                aiMatchScore = 94,
+                isFavorite = false,
+                amenities = listOf("❄️ Air Conditioned", "👟 Shoe Rental", "💧 Hydration Station")
             ),
             Court(
                 id = "c3",
@@ -121,7 +124,9 @@ class MockCourtFinderApi : CourtFinderApi {
                 pricePerHour = "$30/hr",
                 rating = 4.8,
                 availableTimeSlots = listOf("07:00 PM", "08:30 PM"),
-                aiMatchScore = 91
+                aiMatchScore = 91,
+                isFavorite = false,
+                amenities = listOf("🔊 Sound System", "💡 Night Lights", "🚿 Lockers & Showers")
             ),
             Court(
                 id = "c4",
@@ -132,9 +137,37 @@ class MockCourtFinderApi : CourtFinderApi {
                 pricePerHour = "$35/hr",
                 rating = 4.9,
                 availableTimeSlots = listOf("06:00 PM", "07:30 PM"),
-                aiMatchScore = 89
+                aiMatchScore = 89,
+                isFavorite = true,
+                amenities = listOf("☕ Cafe Lounge", "🎾 Glass Panoramic Courts", "🚗 Valet Parking")
             )
         )
-        return Result.success(sampleCourts)
+
+        // Filter based on query if relevant
+        val filtered = if (query.contains("Tennis", ignoreCase = true)) {
+            sampleCourts.filter { it.sportType == "Tennis" }
+        } else if (query.contains("Badminton", ignoreCase = true)) {
+            sampleCourts.filter { it.sportType == "Badminton" }
+        } else if (query.contains("Basketball", ignoreCase = true)) {
+            sampleCourts.filter { it.sportType == "Basketball" }
+        } else if (query.contains("Padel", ignoreCase = true)) {
+            sampleCourts.filter { it.sportType == "Padel" }
+        } else {
+            sampleCourts
+        }
+
+        return Result.success(filtered.ifEmpty { sampleCourts })
+    }
+
+    override suspend fun bookCourt(courtId: String, timeSlot: String): Result<BookingConfirmation> {
+        delay(1200)
+        return Result.success(
+            BookingConfirmation(
+                bookingId = "BK-${(1000..9999).random()}",
+                courtName = "Court #$courtId",
+                timeSlot = timeSlot,
+                date = "Today"
+            )
+        )
     }
 }

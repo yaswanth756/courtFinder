@@ -21,11 +21,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -49,8 +53,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.data.BookingConfirmation
 import com.example.myapplication.data.Court
 import com.example.myapplication.data.User
 import com.example.myapplication.ui.theme.CourtGreen
@@ -66,13 +72,29 @@ fun HomeScreen(
     searchQuery: String,
     searchResults: List<Court>,
     isSearching: Boolean,
+    selectedCourtForBooking: Court?,
+    selectedTimeSlot: String?,
+    isBookingInProgress: Boolean,
+    bookingSuccessConfirmation: BookingConfirmation?,
     onSearchQueryChanged: (String) -> Unit,
     onPerformSearch: () -> Unit,
+    onToggleFavorite: (String) -> Unit,
+    onOpenBookingDialog: (Court) -> Unit,
+    onSelectTimeSlot: (String) -> Unit,
+    onConfirmBooking: () -> Unit,
+    onDismissBookingDialog: () -> Unit,
+    onDismissBookingConfirmation: () -> Unit,
     onLogout: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     var selectedCategory by remember { mutableStateOf("All") }
     val categories = listOf("All", "🎾 Tennis", "🏸 Badminton", "🏀 Basketball", "🎾 Padel", "🏓 Pickleball")
+    val quickPrompts = listOf(
+        "🎾 Tennis courts near me",
+        "🏸 Indoor Badminton after 6 PM",
+        "🏀 Basketball court today",
+        "🎾 Padel court open slots"
+    )
 
     Box(
         modifier = Modifier
@@ -230,6 +252,40 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Quick AI Prompt Chips Feature
+                    Text(
+                        text = "Quick AI Presets:",
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(quickPrompts) { prompt ->
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = DarkSlateBackground.copy(alpha = 0.8f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, CourtLime.copy(alpha = 0.2f)),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        onSearchQueryChanged(prompt)
+                                        onPerformSearch()
+                                    }
+                            ) {
+                                Text(
+                                    text = prompt,
+                                    fontSize = 11.sp,
+                                    color = CourtLime,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Button(
@@ -274,7 +330,12 @@ fun HomeScreen(
                         color = if (isSelected) CourtGreen else DarkSlateCard,
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .clickable { selectedCategory = category }
+                            .clickable {
+                                selectedCategory = category
+                                val query = if (category == "All") "Find courts available near me" else "Find ${category.substringAfter(" ")} courts near me"
+                                onSearchQueryChanged(query)
+                                onPerformSearch()
+                            }
                             .border(
                                 width = 1.dp,
                                 color = if (isSelected) CourtLime else Color.White.copy(alpha = 0.1f),
@@ -325,7 +386,11 @@ fun HomeScreen(
 
             // Court Recommendations List
             searchResults.forEach { court ->
-                CourtItemCard(court = court)
+                CourtItemCard(
+                    court = court,
+                    onToggleFavorite = { onToggleFavorite(court.id) },
+                    onBookClick = { onOpenBookingDialog(court) }
+                )
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
@@ -350,21 +415,196 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Splash Screen, Auth Flow, and AI Court Finder UI are complete. Connect Retrofit/Ktor endpoints in CourtFinderApi.kt to go live!",
+                        text = "Splash Screen, Auth Flow, AI Court Search & Interactive Booking are complete. Connect Retrofit/Ktor endpoints in CourtFinderApi.kt to go live!",
                         fontSize = 12.sp,
                         color = Color.White.copy(alpha = 0.7f),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+
+        // Interactive Court Booking Modal Dialog
+        selectedCourtForBooking?.let { court ->
+            AlertDialog(
+                onDismissRequest = onDismissBookingDialog,
+                containerColor = DarkSlateSurface,
+                title = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = court.name,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                },
+                text = {
+                    Column {
+                        Text(
+                            text = "${court.sportType} • ${court.location}",
+                            fontSize = 12.sp,
+                            color = CourtLime
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = "Court Amenities:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            court.amenities.forEach { amenity ->
+                                Text(
+                                    text = "• $amenity",
+                                    fontSize = 12.sp,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Select Time Slot Today:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            court.availableTimeSlots.forEach { slot ->
+                                val isSelected = selectedTimeSlot == slot
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isSelected) CourtGreen else DarkSlateCard,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (isSelected) CourtLime else Color.White.copy(alpha = 0.2f)
+                                    ),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { onSelectTimeSlot(slot) }
+                                ) {
+                                    Text(
+                                        text = slot,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.8f),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "Price per hour:", fontSize = 12.sp, color = Color.White.copy(alpha = 0.7f))
+                            Text(text = court.pricePerHour, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = CourtLime)
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = onConfirmBooking,
+                        enabled = !isBookingInProgress && selectedTimeSlot != null,
+                        colors = ButtonDefaults.buttonColors(containerColor = CourtGreen, contentColor = Color.White)
+                    ) {
+                        if (isBookingInProgress) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text(text = "Confirm Booking", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onDismissBookingDialog) {
+                        Text(text = "Cancel", color = Color.White.copy(alpha = 0.7f))
+                    }
+                }
+            )
+        }
+
+        // Booking Success Confirmation Alert Dialog
+        bookingSuccessConfirmation?.let { booking ->
+            AlertDialog(
+                onDismissRequest = onDismissBookingConfirmation,
+                containerColor = DarkSlateSurface,
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Success",
+                        tint = CourtGreenLight,
+                        modifier = Modifier.size(40.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = "Booking Confirmed! 🎉",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+                },
+                text = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Your court booking has been successfully reserved via CourtFinder AI Engine.",
+                            fontSize = 13.sp,
+                            color = Color.White.copy(alpha = 0.8f),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(
+                            color = DarkSlateCard,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(text = "Booking ID: ${booking.bookingId}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = CourtLime)
+                                Text(text = "Time: ${booking.timeSlot} (${booking.date})", fontSize = 12.sp, color = Color.White)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = onDismissBookingConfirmation,
+                        colors = ButtonDefaults.buttonColors(containerColor = CourtGreen)
+                    ) {
+                        Text("Done", fontWeight = FontWeight.Bold)
+                    }
+                }
+            )
+        }
     }
 }
 
 @Composable
-fun CourtItemCard(court: Court) {
+fun CourtItemCard(
+    court: Court,
+    onToggleFavorite: () -> Unit,
+    onBookClick: () -> Unit
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = DarkSlateSurface),
         shape = RoundedCornerShape(16.dp),
@@ -373,47 +613,63 @@ fun CourtItemCard(court: Court) {
             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Top Badge Row: Sport Type + AI Match Score
+            // Top Badge Row: Sport Type + AI Match Score + Favorite Heart
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = DarkSlateCard
-                ) {
-                    Text(
-                        text = court.sportType,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CourtLime,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = CourtGreen.copy(alpha = 0.2f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = DarkSlateCard
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            tint = CourtLime,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "${court.aiMatchScore}% AI Match",
+                            text = court.sportType,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = CourtLime
+                            color = CourtLime,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = CourtGreen.copy(alpha = 0.2f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = CourtLime,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "${court.aiMatchScore}% AI Match",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CourtLime
+                            )
+                        }
+                    }
+                }
+
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = if (court.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Favorite",
+                        tint = if (court.isFavorite) Color(0xFFEF4444) else Color.White.copy(alpha = 0.5f),
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
 
@@ -446,6 +702,28 @@ fun CourtItemCard(court: Court) {
                     fontSize = 12.sp,
                     color = Color.White.copy(alpha = 0.6f)
                 )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Amenities Chips
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                court.amenities.take(3).forEach { amenity ->
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = DarkSlateCard.copy(alpha = 0.6f)
+                    ) {
+                        Text(
+                            text = amenity,
+                            fontSize = 10.sp,
+                            color = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -499,7 +777,7 @@ fun CourtItemCard(court: Court) {
                 }
 
                 Button(
-                    onClick = { /* TODO: Book Court API endpoint */ },
+                    onClick = onBookClick,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = CourtGreen,
                         contentColor = Color.White
