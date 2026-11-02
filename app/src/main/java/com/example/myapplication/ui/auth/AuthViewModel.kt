@@ -44,7 +44,11 @@ data class AuthUiState(
     val selectedCourtForBooking: Court? = null,
     val selectedTimeSlot: String? = null,
     val isBookingInProgress: Boolean = false,
-    val bookingSuccessConfirmation: BookingConfirmation? = null
+    val bookingSuccessConfirmation: BookingConfirmation? = null,
+    // Filter & Notification Feature
+    val onlyFavoritesFilter: Boolean = false,
+    val minRatingFilter: Double = 0.0,
+    val alertToastMessage: String? = null
 )
 
 class AuthViewModel(
@@ -190,7 +194,6 @@ class AuthViewModel(
         }
     }
 
-    // Toggle court as favorite
     fun toggleFavorite(courtId: String) {
         val updatedList = _uiState.value.searchResults.map { court ->
             if (court.id == courtId) {
@@ -202,7 +205,36 @@ class AuthViewModel(
         _uiState.value = _uiState.value.copy(searchResults = updatedList)
     }
 
-    // Open booking dialog
+    fun toggleAlert(courtId: String) {
+        var alertMessage = ""
+        val updatedList = _uiState.value.searchResults.map { court ->
+            if (court.id == courtId) {
+                val newAlert = !court.hasAlertSet
+                alertMessage = if (newAlert) "🔔 Availability alert set for ${court.name}" else "Alert cancelled for ${court.name}"
+                court.copy(hasAlertSet = newAlert)
+            } else {
+                court
+            }
+        }
+        _uiState.value = _uiState.value.copy(
+            searchResults = updatedList,
+            alertToastMessage = alertMessage
+        )
+    }
+
+    fun toggleFavoritesFilter() {
+        _uiState.value = _uiState.value.copy(onlyFavoritesFilter = !_uiState.value.onlyFavoritesFilter)
+    }
+
+    fun toggleMinRatingFilter() {
+        val newRating = if (_uiState.value.minRatingFilter == 0.0) 4.8 else 0.0
+        _uiState.value = _uiState.value.copy(minRatingFilter = newRating)
+    }
+
+    fun dismissAlertToast() {
+        _uiState.value = _uiState.value.copy(alertToastMessage = null)
+    }
+
     fun openBookingDialog(court: Court) {
         _uiState.value = _uiState.value.copy(
             selectedCourtForBooking = court,

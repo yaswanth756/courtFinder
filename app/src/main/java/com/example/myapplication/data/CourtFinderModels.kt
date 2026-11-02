@@ -41,6 +41,7 @@ data class Court(
     val availableTimeSlots: List<String>,
     val aiMatchScore: Int, // e.g. 95% AI Match
     val isFavorite: Boolean = false,
+    val hasAlertSet: Boolean = false,
     val amenities: List<String> = listOf("💡 Floodlights", "🚗 Free Parking", "🚿 Showers", "💧 Water Station")
 )
 
@@ -49,4 +50,9 @@ data class BookingConfirmation(
     val courtName: String,
     val timeSlot: String,
     val date: String
+)
+
+data class CourtFilterOptions(
+    val onlyFavorites: Boolean = false,
+    val minRating: Double = 0.0
 )
