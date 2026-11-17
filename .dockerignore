@@ -1,0 +1,12 @@
+.git
+.idea
+.gradle
+.kotlin
+app
+build
+backend/build
+backend/.gradle
+backend/data
+local.properties
+**/*service-account*.json
+**/*firebase-adminsdk*.json

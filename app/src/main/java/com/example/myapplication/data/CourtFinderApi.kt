@@ -12,8 +12,11 @@ interface CourtFinderApi {
     suspend fun login(request: LoginRequest): Result<AuthResponse>
     suspend fun register(request: RegisterRequest): Result<AuthResponse>
     suspend fun loginWithGoogle(idToken: String): Result<AuthResponse>
-    suspend fun searchCourtsWithAI(query: String): Result<List<Court>>
+    suspend fun searchCourts(query: String): Result<List<Court>>
     suspend fun bookCourt(courtId: String, timeSlot: String): Result<BookingConfirmation>
+    suspend fun getCurrentUser(): Result<User?> = Result.success(null)
+    suspend fun deleteAccount(): Result<Unit>
+    fun clearSession() = Unit
 }
 
 /**
@@ -25,7 +28,7 @@ class MockCourtFinderApi : CourtFinderApi {
         delay(1200)
 
         return if (request.emailOrPhone.contains("@") || request.emailOrPhone.length >= 10) {
-            if (request.passwordHash.length >= 6) {
+            if (request.password.length >= 10) {
                 Result.success(
                     AuthResponse(
                         success = true,
@@ -38,7 +41,7 @@ class MockCourtFinderApi : CourtFinderApi {
                     )
                 )
             } else {
-                Result.failure(Exception("Password must be at least 6 characters."))
+                Result.failure(Exception("Password must be at least 10 characters."))
             }
         } else {
             Result.failure(Exception("Invalid email or phone number."))
@@ -54,8 +57,8 @@ class MockCourtFinderApi : CourtFinderApi {
         if (!request.email.contains("@")) {
             return Result.failure(Exception("Please enter a valid email address."))
         }
-        if (request.passwordHash.length < 6) {
-            return Result.failure(Exception("Password must be at least 6 characters."))
+        if (request.password.length < 10) {
+            return Result.failure(Exception("Password must be at least 10 characters."))
         }
 
         return Result.success(
@@ -73,20 +76,12 @@ class MockCourtFinderApi : CourtFinderApi {
 
     override suspend fun loginWithGoogle(idToken: String): Result<AuthResponse> {
         delay(1000)
-        return Result.success(
-            AuthResponse(
-                success = true,
-                token = "google_auth_token_sample",
-                user = User(
-                    id = "google_user_001",
-                    name = "Google Sports User",
-                    email = "user@google.com"
-                )
-            )
-        )
+        return Result.failure(IllegalStateException("Google sign-in is not configured for the mock service."))
     }
 
-    override suspend fun searchCourtsWithAI(query: String): Result<List<Court>> {
+    override suspend fun deleteAccount(): Result<Unit> = Result.success(Unit)
+
+    override suspend fun searchCourts(query: String): Result<List<Court>> {
         delay(800)
         val sampleCourts = listOf(
             Court(
@@ -95,6 +90,8 @@ class MockCourtFinderApi : CourtFinderApi {
                 sportType = "Tennis",
                 location = "Downtown Sports Hub, Sector 4",
                 distanceKm = 1.8,
+                latitude = 37.7749,
+                longitude = -122.4194,
                 pricePerHour = "$25/hr",
                 rating = 4.9,
                 availableTimeSlots = listOf("06:00 PM", "07:00 PM", "09:00 PM"),
@@ -108,6 +105,8 @@ class MockCourtFinderApi : CourtFinderApi {
                 sportType = "Badminton",
                 location = "Eastside Fitness Park",
                 distanceKm = 3.2,
+                latitude = 37.7849,
+                longitude = -122.4094,
                 pricePerHour = "$18/hr",
                 rating = 4.7,
                 availableTimeSlots = listOf("05:30 PM", "08:00 PM"),
@@ -121,6 +120,8 @@ class MockCourtFinderApi : CourtFinderApi {
                 sportType = "Basketball",
                 location = "Central Stadium Complex",
                 distanceKm = 4.5,
+                latitude = 37.7649,
+                longitude = -122.4294,
                 pricePerHour = "$30/hr",
                 rating = 4.8,
                 availableTimeSlots = listOf("07:00 PM", "08:30 PM"),
@@ -134,12 +135,28 @@ class MockCourtFinderApi : CourtFinderApi {
                 sportType = "Padel",
                 location = "Green Valley Sports Club",
                 distanceKm = 5.0,
+                latitude = 37.7549,
+                longitude = -122.4394,
                 pricePerHour = "$35/hr",
                 rating = 4.9,
                 availableTimeSlots = listOf("06:00 PM", "07:30 PM"),
                 aiMatchScore = 89,
                 isFavorite = true,
                 amenities = listOf("☕ Cafe Lounge", "🎾 Glass Panoramic Courts", "🚗 Valet Parking")
+            ),
+            Court(
+                id = "c5",
+                name = "Rally Pickleball Center",
+                sportType = "Pickleball",
+                location = "Westside Community Sports Park",
+                distanceKm = 2.6,
+                latitude = 37.7949,
+                longitude = -122.3994,
+                pricePerHour = "$22/hr",
+                rating = 4.6,
+                availableTimeSlots = listOf("05:00 PM", "06:30 PM", "08:00 PM"),
+                aiMatchScore = 92,
+                amenities = listOf("Court Lighting", "Free Parking", "Water Station")
             )
         )
 
@@ -152,11 +169,13 @@ class MockCourtFinderApi : CourtFinderApi {
             sampleCourts.filter { it.sportType == "Basketball" }
         } else if (query.contains("Padel", ignoreCase = true)) {
             sampleCourts.filter { it.sportType == "Padel" }
+        } else if (query.contains("Pickleball", ignoreCase = true)) {
+            sampleCourts.filter { it.sportType == "Pickleball" }
         } else {
             sampleCourts
         }
 
-        return Result.success(filtered.ifEmpty { sampleCourts })
+        return Result.success(filtered)
     }
 
     override suspend fun bookCourt(courtId: String, timeSlot: String): Result<BookingConfirmation> {

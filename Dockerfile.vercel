@@ -1,0 +1,15 @@
+FROM eclipse-temurin:23-jdk AS build
+WORKDIR /workspace
+
+COPY gradlew ./gradlew
+COPY gradle ./gradle
+COPY backend ./backend
+RUN chmod +x ./gradlew && ./gradlew -p backend installDist --no-daemon
+
+FROM eclipse-temurin:23-jre
+WORKDIR /opt/courtfinder
+COPY --from=build /workspace/backend/build/install/courtFinderBackend/ ./
+
+ENV COURTFINDER_ENV=production
+EXPOSE 8080
+CMD ["/opt/courtfinder/bin/courtFinderBackend"]

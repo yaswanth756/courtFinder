@@ -7,12 +7,12 @@ val CourtGreen = Color(0xFF059669)
 val CourtGreenLight = Color(0xFF10B981)
 val CourtGreenDark = Color(0xFF047857)
 
-val CourtLime = Color(0xFF84CC16) // Accent / AI Badge
+val CourtLime = Color(0xFF84CC16) // Accent color
 val CourtLimeLight = Color(0xFFA3E635)
 
-val DarkSlateBackground = Color(0xFF0F172A)
-val DarkSlateSurface = Color(0xFF1E293B)
-val DarkSlateCard = Color(0xFF334155)
+val DarkSlateBackground = Color(0xFF11100F)
+val DarkSlateSurface = Color(0xFF211E1A)
+val DarkSlateCard = Color(0xFF342D24)
 
 val TextPrimaryDark = Color(0xFFF8FAFC)
 val TextSecondaryDark = Color(0xFF94A3B8)

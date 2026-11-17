@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "552247271958",
+    "project_id": "courtfinder-e36ea",
+    "storage_bucket": "courtfinder-e36ea.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:552247271958:android:a4ba823d20a45c3d58cb37",
+        "android_client_info": {
+          "package_name": "com.yaswanth756.courtfinder"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "552247271958-dr0j6qlsg0c6jt3840bdvm1cdur31ima.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yaswanth756.courtfinder",
+            "certificate_hash": "7f222164d2d45137cc8e8f8c1ea05ba721414e2f"
+          }
+        },
+        {
+          "client_id": "552247271958-n88508qbkm38lmh92mhhivprhvs208db.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4cdHuJjCaC7e52bvZueyWfkaqSV2cNRs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "552247271958-n88508qbkm38lmh92mhhivprhvs208db.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

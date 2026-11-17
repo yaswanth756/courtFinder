@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-client-id" content="__GOOGLE_WEB_CLIENT_ID__">
+  <title>Delete your CourtFinder account</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #101820; color: #f5f7fa; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; box-sizing: border-box; }
+    main { width: min(100%, 480px); background: #1b2935; border: 1px solid #344451; border-radius: 20px; padding: 28px; box-sizing: border-box; }
+    h1 { margin-top: 0; font-size: 1.6rem; }
+    p { color: #d1d9df; line-height: 1.55; }
+    label { display: block; margin: 14px 0 6px; }
+    input { width: 100%; padding: 12px; box-sizing: border-box; border-radius: 8px; border: 1px solid #60717d; background: #101820; color: white; }
+    button { margin-top: 16px; padding: 12px 16px; border: 0; border-radius: 8px; background: #b3261e; color: white; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    #google-sign-in { margin-top: 16px; }
+    #status { min-height: 1.5em; margin-top: 16px; }
+    .divider { border-top: 1px solid #344451; margin: 24px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Delete your CourtFinder account</h1>
+  <p>Sign in to permanently delete your CourtFinder account and associated booking records. This action cannot be undone.</p>
+  <form id="password-form">
+    <label for="email">Email address</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password" required>
+    <button id="delete-button" type="submit">Sign in and delete account</button>
+  </form>
+  <div class="divider"></div>
+  <p>You can also sign in with the Google account linked to CourtFinder:</p>
+  <div id="google-sign-in"></div>
+  <p id="status" role="status" aria-live="polite"></p>
+</main>
+<script>
+  const statusNode = document.getElementById('status');
+  const deleteButton = document.getElementById('delete-button');
+  const setBusy = (busy) => { deleteButton.disabled = busy; statusNode.textContent = busy ? 'Processing deletion…' : ''; };
+
+  async function sendJson(path, body) {
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.errorMessage || 'Sign-in failed. Check your details and try again.');
+    return data;
+  }
+
+  async function deleteWithToken(token) {
+    const response = await fetch('/api/account', {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.errorMessage || 'Account deletion failed. Please try again.');
+    }
+    statusNode.textContent = 'Your CourtFinder account and booking records have been deleted.';
+    document.getElementById('password-form').hidden = true;
+    document.getElementById('google-sign-in').hidden = true;
+  }
+
+  document.getElementById('password-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const account = await sendJson('/api/auth/login', {
+        emailOrPhone: document.getElementById('email').value,
+        password: document.getElementById('password').value
+      });
+      await deleteWithToken(account.token);
+    } catch (error) {
+      statusNode.textContent = error.message;
+    } finally {
+      deleteButton.disabled = false;
+    }
+  });
+
+  const googleClientId = document.querySelector('meta[name="google-client-id"]').content;
+  if (googleClientId) {
+    const googleScript = document.createElement('script');
+    googleScript.src = 'https://accounts.google.com/gsi/client';
+    googleScript.async = true;
+    googleScript.onload = () => {
+      google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async (response) => {
+          statusNode.textContent = 'Verifying your Google account…';
+          try {
+            const account = await sendJson('/api/auth/google', { idToken: response.credential });
+            await deleteWithToken(account.token);
+          } catch (error) {
+            statusNode.textContent = error.message;
+          }
+        }
+      });
+      google.accounts.id.renderButton(document.getElementById('google-sign-in'), { theme: 'outline', size: 'large' });
+    };
+    googleScript.onerror = () => { statusNode.textContent = 'Google sign-in could not load. Use your CourtFinder email and password instead.'; };
+    document.head.appendChild(googleScript);
+  } else {
+    document.getElementById('google-sign-in').hidden = true;
+  }
+</script>
+</body>
+</html>
