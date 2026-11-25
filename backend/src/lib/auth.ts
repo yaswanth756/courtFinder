@@ -91,7 +91,6 @@ function getFirebaseApp(): App | null {
       });
     } else {
       firebaseApp = initializeApp({
-        credential: applicationDefault(),
         projectId,
       });
     }
@@ -126,24 +125,23 @@ export async function verifyGoogleToken(idToken: string): Promise<VerifiedGoogle
       throw new Error('Firebase Google sign-in verification is unavailable. Configure Firebase Admin credentials.');
     }
     try {
-      const decodedFb = await getAuth(app).verifyIdToken(idToken, true);
+      const hasServiceAccount = Boolean(process.env.COURTFINDER_FIREBASE_SERVICE_ACCOUNT_JSON);
+      const decodedFb = await getAuth(app).verifyIdToken(idToken, hasServiceAccount);
       const firebaseClaims = decodedFb.firebase;
-      if (firebaseClaims.sign_in_provider !== 'google.com' || !decodedFb.email_verified || !decodedFb.email) {
+      if (firebaseClaims?.sign_in_provider !== 'google.com' || !decodedFb.email_verified || !decodedFb.email) {
         throw new Error('Firebase token is not a verified Google account.');
       }
       const googleIdentities = (firebaseClaims.identities as Record<string, string[]>)?.['google.com'];
-      const googleSubject = googleIdentities?.[0];
-      if (!googleSubject) {
-        throw new Error('Google subject not found in Firebase token.');
-      }
+      const googleSubject = googleIdentities?.[0] || decodedFb.uid;
       return {
         subject: googleSubject,
         email: decodedFb.email,
         name: decodedFb.name || null,
         firebaseUid: decodedFb.uid,
       };
-    } catch {
-      throw new Error('Firebase Google sign-in token is invalid, expired, or not linked to a verified Google account.');
+    } catch (err: any) {
+      console.error('Firebase verification error:', err);
+      throw new Error(err.message || 'Firebase Google sign-in token is invalid, expired, or not linked to a verified Google account.');
     }
   }
 
